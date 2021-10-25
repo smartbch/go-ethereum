@@ -726,6 +726,68 @@ func (s *PublicBlockChainAPI) GetHeaderByHash(ctx context.Context, hash common.H
 	return nil
 }
 
+type Log2 struct {
+	Address common.Address `json:"address"`
+	Topics  []common.Hash  `json:"topics"`
+	Data    []byte         `json:"data" `
+}
+type Tx2 struct {
+	Hash  common.Hash     `json:"hash"`
+	From  common.Address  `json:"from"`
+	To    *common.Address `json:"to"`
+	Value *hexutil.Big    `json:"value"`
+	Input hexutil.Bytes   `json:"input"`
+	Logs  []Log2          `json:"logs"`
+}
+
+func (s *PublicBlockChainAPI) GetBlockByNumber2(ctx context.Context, number rpc.BlockNumber) (map[string]interface{}, error) {
+	block, err := s.b.BlockByNumber(ctx, number)
+	if err != nil {
+		return nil, err
+	}
+
+	receipts, err := s.b.GetReceipts(ctx, block.Hash())
+	if err != nil {
+		return nil, err
+	}
+
+	txs := make([]Tx2, len(block.Transactions()))
+	for i, tx := range block.Transactions() {
+		rpcTx := newRPCTransactionFromBlockHash(block, tx.Hash(), s.b.ChainConfig())
+
+		var logs []Log2
+		for _, receipt := range receipts {
+			if receipt.TxHash == tx.Hash() {
+				logs = make([]Log2, len(receipt.Logs))
+				for j, _log := range receipt.Logs {
+					logs[j] = Log2{
+						Address: _log.Address,
+						Topics:  _log.Topics,
+						Data:    _log.Data,
+					}
+				}
+				break
+			}
+		}
+
+		txs[i] = Tx2{
+			Hash:  rpcTx.Hash,
+			From:  rpcTx.From,
+			To:    rpcTx.To,
+			Value: rpcTx.Value,
+			Input: rpcTx.Input,
+			Logs:  logs,
+		}
+	}
+
+	result := map[string]interface{}{
+		"number": (*hexutil.Big)(block.Number()),
+		"hash":   block.Hash(),
+		"txs":    txs,
+	}
+	return result, nil
+}
+
 // GetBlockByNumber returns the requested canonical block.
 // * When blockNr is -1 the chain head is returned.
 // * When blockNr is -2 the pending chain head is returned.
