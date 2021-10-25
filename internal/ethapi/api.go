@@ -729,7 +729,7 @@ func (s *PublicBlockChainAPI) GetHeaderByHash(ctx context.Context, hash common.H
 type Log2 struct {
 	Address common.Address `json:"address"`
 	Topics  []common.Hash  `json:"topics"`
-	Data    []byte         `json:"data" `
+	Data    hexutil.Bytes  `json:"data" `
 }
 type Tx2 struct {
 	Hash  common.Hash     `json:"hash"`
